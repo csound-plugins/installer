@@ -1,4 +1,4 @@
-# Csound 7 Linux Installer
+# Csound 7 Installer
 
 A small bootstrapping script that downloads the Csound 7 portable 
 release from the [csound-plugins/csound-plugins](https://github.com/csound-plugins/csound-plugins)
