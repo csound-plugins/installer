@@ -9,7 +9,7 @@ GitHub repository, verifies its integrity, and runs the bundled installer.
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/csound-plugins/installer/master/install.sh | bash
+curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash
 ```
 
 ### Windows

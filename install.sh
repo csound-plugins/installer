@@ -21,12 +21,12 @@ esac
 #
 # SAFER USAGE (recommended):
 #   curl -fsSL -o install-csound7-linux.sh \
-#       https://raw.githubusercontent.com/csound-plugins/csound-plugins/master/install-csound7-linux.sh
+#       https://csound-plugins.github.io/installer/install.sh
 #   # Read the script, then run it:
 #   bash ./install-csound7-linux.sh
 #
 # One-line usage (convenient, but inspects nothing before execution):
-#   curl -fsSL https://raw.githubusercontent.com/csound-plugins/csound-plugins/master/install-csound7-linux.sh | bash
+#   curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash
 #
 # This script downloads the release asset named in CSOUND7_ASSET
 # (default: csound7-linux-full.zip), verifies its SHA-256 checksum,
