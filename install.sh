@@ -41,9 +41,24 @@ esac
 #     trust, sign the checksum file with GPG and verify it here.
 # ═══════════════════════════════════════════════════════════════════
 
+# Detect the CPU architecture.
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64|amd64)
+        ARCH_SUFFIX="x86_64"
+        ;;
+    aarch64|arm64)
+        ARCH_SUFFIX="aarch64"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH. Supported architectures: x86_64, aarch64."
+        exit 1
+        ;;
+esac
+
 REPO="csound-plugins/csound-plugins"
 TAG="${CSOUND7_TAG:-latest}"
-ASSET="${CSOUND7_ASSET:-csound7-linux-full.zip}"
+ASSET="${CSOUND7_ASSET:-csound7-linux-${ARCH_SUFFIX}.zip}"
 CHECKSUM_ASSET="${ASSET}.sha256"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${ASSET}"
 CHECKSUM_URL="https://github.com/${REPO}/releases/download/${TAG}/${CHECKSUM_ASSET}"
