@@ -12,6 +12,8 @@ GitHub repository, verifies its integrity, and runs the bundled installer.
 curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash
 ```
 
+The installer detects the os and architecture and downloads the corresponding distribution
+
 ### Windows
 
 Windows is not supported at the moment
