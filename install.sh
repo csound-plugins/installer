@@ -1,6 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+    cat <<'EOF'
+Usage: install.sh [OPTIONS] [-- BUNDLED-INSTALLER-OPTIONS]
+
+Options:
+  --help       Show this help without downloading the installer.
+  --help-all   Download the installer and show this help plus the bundled installer help.
+  --verbose    Show the checksum URL and expected and calculated SHA-256 checksums.
+
+Arguments after -- are passed unchanged to the bundled installer. Use --help-all
+to see the bundled installer's supported options and parameters.
+EOF
+}
+
+VERBOSE=0
+SHOW_HELP=0
+HELP_ALL=0
+INSTALLER_ARGS=()
+while (($#)); do
+    case "$1" in
+        --help)
+            SHOW_HELP=1
+            ;;
+        --help-all)
+            HELP_ALL=1
+            ;;
+        --verbose)
+            VERBOSE=1
+            ;;
+        --)
+            shift
+            INSTALLER_ARGS+=("$@")
+            break
+            ;;
+        *)
+            INSTALLER_ARGS+=("$1")
+            ;;
+    esac
+    shift
+done
+
+if ((SHOW_HELP)); then
+    usage
+    exit 0
+fi
+
 # Detect the operating system.
 OS=$(uname -s)
 case "$OS" in
@@ -68,6 +114,12 @@ error() {
     printf 'Error: %s\n' "$*" >&2
 }
 
+verbose() {
+    if ((VERBOSE)); then
+        printf '%s\n' "$*"
+    fi
+}
+
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
         error "'$1' is required but not installed."
@@ -101,7 +153,8 @@ EXTRACT_DIR="${TMP_DIR}/extracted"
 mkdir -p "$EXTRACT_DIR"
 
 # ─── Download ─────────────────────────────────────────────────────
-echo "Downloading ${ASSET} from GitHub..."
+echo "Downloading ${ASSET}..."
+echo "URL: ${DOWNLOAD_URL}"
 if ! curl -fsSL -o "$ZIP_FILE" "$DOWNLOAD_URL"; then
     error "Failed to download ${ASSET}"
     error "URL: ${DOWNLOAD_URL}"
@@ -111,10 +164,13 @@ echo "Download complete: ${ZIP_FILE}"
 
 # ─── Verify checksum ──────────────────────────────────────────────
 echo "Downloading checksum file: ${CHECKSUM_ASSET}..."
+verbose "Checksum URL: ${CHECKSUM_URL}"
 if curl -fsSL -o "${ZIP_FILE}.sha256" "$CHECKSUM_URL"; then
     echo "Verifying SHA-256 checksum..."
     EXPECTED_HASH=$(awk 'NR==1 {print $1}' "${ZIP_FILE}.sha256")
     ACTUAL_HASH=$($SHA256_CMD "$ZIP_FILE" | awk '{print $1}')
+    verbose "Expected SHA-256: ${EXPECTED_HASH:-<missing>}"
+    verbose "Actual SHA-256:   ${ACTUAL_HASH:-<missing>}"
     if [[ -z "$EXPECTED_HASH" ]] || [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
         error "SHA-256 checksum verification failed for ${ASSET}"
         error "Expected: ${EXPECTED_HASH:-<missing>}"
@@ -152,16 +208,23 @@ fi
 
 chmod +x "$INSTALLER"
 
+if ((HELP_ALL)); then
+    usage
+    printf '\nBundled installer help:\n'
+    "$INSTALLER" --help
+    exit 0
+fi
+
 # ─── Run installer ────────────────────────────────────────────────
 echo "Running bundled installer: ${INSTALLER}"
 if [[ -t 0 ]]; then
     # stdin is a terminal: run normally
-    "$INSTALLER" "$@"
+    "$INSTALLER" "${INSTALLER_ARGS[@]}"
 else
     # Executed via curl | bash: give the interactive installer a TTY
     # so its prompts (read/sudo) work correctly.
     if [[ -e /dev/tty ]]; then
-        "$INSTALLER" "$@" < /dev/tty
+        "$INSTALLER" "${INSTALLER_ARGS[@]}" < /dev/tty
     else
         error "No terminal available (/dev/tty)."
         error "This installer is interactive; please run it from a terminal."
