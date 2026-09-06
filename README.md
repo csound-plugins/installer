@@ -9,7 +9,7 @@ GitHub repository, verifies its integrity, and runs the bundled installer.
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash
+curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash
 ```
 
 The installer detects the os and architecture and downloads the corresponding distribution
@@ -18,7 +18,7 @@ and prints the exact archive URL before downloading it.
 To show the checksum-file URL and the expected and calculated SHA-256 checksums:
 
 ```bash
-curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash -s -- --verbose
+curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --verbose
 ```
 
 `--verbose` belongs to the bootstrap script. To pass a `--verbose` flag to the
