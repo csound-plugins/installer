@@ -2,7 +2,8 @@
 
 A small bootstrapping script that downloads the Csound 7 portable 
 release from the [csound-plugins/csound-plugins](https://github.com/csound-plugins/csound-plugins)
-GitHub repository, verifies its integrity, and runs the bundled installer.
+GitHub repository, verifies its integrity, and runs the bundled installer. 
+The script is uploaded to the csound-plugins site as `csound-plugins.github.io/getcsound.sh`
 
 ## Quick install 
 
