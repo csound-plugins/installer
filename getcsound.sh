@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: install.sh [OPTIONS] [-- BUNDLED-INSTALLER-OPTIONS]
+Usage: getcsound.sh [OPTIONS] [-- BUNDLED-INSTALLER-OPTIONS]
 
 Options:
   --help       Show this help without downloading the installer.
