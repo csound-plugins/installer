@@ -17,12 +17,12 @@ jobs:
         run: bash tests/lint.sh
 
   macos-smoke:
-    name: macOS install-path smoke test
+    name: macOS install & render smoke test
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Run macOS install-path smoke test
+      - name: Install Csound and render a .csd
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash tests/macos_smoke.sh
