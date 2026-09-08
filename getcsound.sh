@@ -68,6 +68,20 @@ require_command() {
     fi
 }
 
+# github_api_get URL OUTFILE
+#
+# GitHub's API rate-limits anonymous requests (shared runner IPs are often
+# blocked with HTTP 403). When GH_TOKEN is set it is used to authenticate;
+# otherwise the request stays anonymous.
+github_api_get() {
+    local url=$1 out=$2
+    if [[ -n "${GH_TOKEN:-}" ]]; then
+        curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -o "$out" "$url"
+    else
+        curl -fsSL -o "$out" "$url"
+    fi
+}
+
 # ═══════════════════════════════════════════════════════════════════
 # Csound 7 Portable Linux - One-line installer
 #
@@ -265,6 +279,10 @@ install_macos() {
     BRANCH="${CSOUND7_MACOS_BRANCH:-develop}"
     ARTIFACT_GLOB="${CSOUND7_MACOS_ASSET:-csound-7.*-macos*}"
 
+    # Use a token for the GitHub API queries when one is available in the
+    # environment (e.g. GITHUB_TOKEN on CI); anonymous otherwise.
+    GH_TOKEN="${CSOUND7_GH_TOKEN:-${GH_TOKEN:-${GITHUB_TOKEN:-}}}"
+
     # ─── Prepare temporary directory ────────────────────────────────
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
@@ -275,7 +293,7 @@ install_macos() {
         echo "Looking for the latest successful ${WORKFLOW} run on branch '${BRANCH}' of ${REPO}..."
         RUNS_URL="https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/runs?branch=${BRANCH}&event=push&per_page=30"
         verbose "Runs URL: ${RUNS_URL}"
-        if ! curl -fsSL -o "$TMP_DIR/runs.json" "$RUNS_URL"; then
+        if ! github_api_get "$RUNS_URL" "$TMP_DIR/runs.json"; then
             error "Failed to query workflow runs."
             error "URL: ${RUNS_URL}"
             exit 1
@@ -298,7 +316,7 @@ install_macos() {
     if [[ -z "$ARTIFACT_NAME" ]]; then
         ARTIFACTS_URL="https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/artifacts?per_page=100"
         verbose "Artifacts URL: ${ARTIFACTS_URL}"
-        if ! curl -fsSL -o "$TMP_DIR/artifacts.json" "$ARTIFACTS_URL"; then
+        if ! github_api_get "$ARTIFACTS_URL" "$TMP_DIR/artifacts.json"; then
             error "Failed to list the artifacts of run ${RUN_ID}."
             error "URL: ${ARTIFACTS_URL}"
             exit 1

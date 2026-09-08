@@ -92,6 +92,7 @@ terminal session.
 | `CSOUND7_MACOS_ASSET`     | `csound-7.*-macos*`            | Glob of the artifact name to install (macOS). |
 | `CSOUND7_MACOS_RUN_ID`    | *(latest successful run)*      | Pin a specific workflow run (macOS).          |
 | `CSOUND7_MACOS_ARTIFACT`  | *(first match of the glob)*    | Pin a specific artifact name (macOS).         |
+| `CSOUND7_GH_TOKEN`        | *(anonymous)*                  | GitHub token used to authenticate the API queries when set (also honors `GH_TOKEN` / `GITHUB_TOKEN`). Recommended on CI, where anonymous API calls are rate-limited. |
 
 ## Options
 
