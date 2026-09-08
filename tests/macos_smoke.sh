@@ -79,13 +79,14 @@ ksmps = 10
 nchnls = 1
 
 instr 1
-a1 oscil p4, p5, 1
-out a1
+  a1 oscili p4, p5
+  outch 1, a1
 endin
+
 </CsInstruments>
 <CsScore>
-f 1 0 4096 10 1
 i 1 0 1 0.5 440
+i 1 1 1 0.5 880
 e
 </CsScore>
 </CsoundSynthesizer>
