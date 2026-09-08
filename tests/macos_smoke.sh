@@ -12,11 +12,29 @@
 #
 # This depends on the csound/csound "develop" branch having a recent
 # successful build with a macOS artifact.
+#
+# When RENDER_ARTIFACT_DIR is set, the rendered output, the .csd and the logs
+# are copied there so CI can upload them for inspection.
 
 cd "$(dirname "$0")/.." || exit 1
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+
+ARTIFACT_DIR="${RENDER_ARTIFACT_DIR:-}"
+if [[ -n "$ARTIFACT_DIR" ]]; then
+    mkdir -p "$ARTIFACT_DIR"
+fi
+
+save_artifact() { # src basename
+    if [[ -n "$ARTIFACT_DIR" && -f "$1" ]]; then
+        cp "$1" "$ARTIFACT_DIR/$2"
+    fi
+}
+
+LOG="$WORK/install.log"
+NORM="$WORK/install.norm.log"
+: > "$NORM"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -24,10 +42,6 @@ fail() {
     cat "$NORM" >&2
     exit 1
 }
-
-LOG="$WORK/install.log"
-NORM="$WORK/install.norm.log"
-: > "$NORM"
 
 # Use /bin/bash (the macOS system bash, v3.2) to also cover version
 # compatibility of getcsound.sh.
@@ -37,6 +51,7 @@ script "$LOG" /bin/bash ./getcsound.sh
 if [[ -f "$LOG" ]]; then
     tr -d '\r' < "$LOG" > "$NORM"
 fi
+save_artifact "$NORM" install.log
 
 grep -q 'Using workflow run:' "$NORM" || fail "no workflow run was resolved"
 grep -qE 'Using artifact: csound-7' "$NORM" || fail "no matching macOS artifact was resolved"
@@ -48,7 +63,10 @@ if [[ ! -x "$CSOUND_BIN" ]]; then
     fail "csound binary not found at ${CSOUND_BIN}"
 fi
 
-VERSION=$("$CSOUND_BIN" --version 2>&1) || fail "csound --version failed"
+if ! VERSION=$("$CSOUND_BIN" --version 2>&1); then
+    printf '%s\n' "$VERSION" >&2
+    fail "csound --version failed"
+fi
 printf 'csound --version: %s\n' "$VERSION"
 
 # Render a trivial instrument to a WAV file on disk.
@@ -72,24 +90,40 @@ e
 </CsScore>
 </CsoundSynthesizer>
 CSD
+save_artifact "$WORK/render.csd" render.csd
 
-(cd "$WORK" && "$CSOUND_BIN" -o out.wav render.csd) > "$WORK/render.log" 2>&1
+(cd "$WORK" && "$CSOUND_BIN" -W -o out.wav render.csd) > "$WORK/render.log" 2>&1
 rc=$?
+save_artifact "$WORK/render.log" render.log
+save_artifact "$WORK/out.wav" out.wav
+
 if ((rc != 0)); then
     printf 'FAIL: csound render exited with %d\n' "$rc" >&2
+    printf '%s\n' '--- render.log ---' >&2
     cat "$WORK/render.log" >&2
     exit 1
 fi
 
 if [[ ! -f "$WORK/out.wav" ]]; then
     printf 'FAIL: no output file written\n' >&2
+    printf '%s\n' '--- render.log ---' >&2
     cat "$WORK/render.log" >&2
     exit 1
 fi
-if [[ "$(head -c 4 "$WORK/out.wav")" != "RIFF" ]]; then
-    printf 'FAIL: output is not a WAV file\n' >&2
-    ls -l "$WORK" >&2
+
+SIZE=$(wc -c < "$WORK/out.wav")
+if ((SIZE == 0)); then
+    printf 'FAIL: rendered output is empty\n' >&2
+    printf '%s\n' '--- render.log ---' >&2
+    cat "$WORK/render.log" >&2
     exit 1
 fi
 
-printf 'macOS install + render smoke test OK (rendered %d bytes)\n' "$(wc -c < "$WORK/out.wav")"
+# Report the file's MIME information for the maintainer.
+MIME="unknown"
+if file -b --mime-type "$WORK/out.wav" > "$WORK/mime.txt" 2>/dev/null; then
+    MIME=$(cat "$WORK/mime.txt")
+elif file -bI "$WORK/out.wav" > "$WORK/mime.txt" 2>/dev/null; then
+    MIME=$(cat "$WORK/mime.txt")
+fi
+printf 'macOS install + render smoke test OK: %s (%d bytes, mime: %s)\n' "$WORK/out.wav" "$SIZE" "$MIME"

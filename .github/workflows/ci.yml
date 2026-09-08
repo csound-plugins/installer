@@ -25,4 +25,11 @@ jobs:
       - name: Install Csound and render a .csd
         env:
           GH_TOKEN: ${{ github.token }}
+          RENDER_ARTIFACT_DIR: ${{ runner.temp }}/csound-render
         run: bash tests/macos_smoke.sh
+      - name: Upload rendered output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-render
+          path: ${{ runner.temp }}/csound-render
