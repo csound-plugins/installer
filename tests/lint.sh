@@ -39,6 +39,7 @@ out=$(bash getcsound.sh --help 2>&1)
 rc=$?
 [[ $rc -eq 0 ]] || fail "--help exited with $rc"
 grep -q 'Usage:' <<<"$out" || fail "--help does not print usage"
+grep -q -- '--release' <<<"$out" || fail "--help does not mention --release"
 
 echo "== macOS --help-all exits without downloading =="
 dir=$(write_uname Darwin)

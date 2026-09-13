@@ -10,8 +10,13 @@ current platform and installs it:
   `csound_builds` workflow of the [csound/csound](https://github.com/csound/csound)
   repository (branch `develop`, which corresponds to Csound 7) and installs it
   with the system `installer`.
+- On **Windows** (x86_64 only) it downloads the official `.exe` installer built
+  by the same `csound_builds` workflow and runs it. Windows on ARM64 is not
+  supported yet.
 
-The script is uploaded to the csound-plugins site as `csound-plugins.github.io/getcsound.sh`
+The shell script is uploaded to the csound-plugins site as
+`csound-plugins.github.io/getcsound.sh`; the PowerShell script as
+`csound-plugins.github.io/getcsound.ps1`.
 
 ## Quick install 
 
@@ -55,7 +60,48 @@ curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash -s -- --
 
 ### Windows
 
-Windows is not supported at the moment
+Windows on ARM64 is not supported yet; the installer exits with an error there.
+
+The `.exe` is a machine-wide Inno Setup installer, so it needs Administrator
+rights. Run this from a PowerShell session (a UAC prompt will appear unless the
+session is already elevated):
+
+```powershell
+irm https://csound-plugins.github.io/getcsound.ps1 | iex
+```
+
+To show the download URLs and other diagnostics:
+
+```powershell
+& ([scriptblock]::Create((irm https://csound-plugins.github.io/getcsound.ps1))) --verbose
+```
+
+`--verbose` belongs to the bootstrap script. To pass extra flags to the Inno
+Setup installer instead, separate them with `--`:
+
+```powershell
+& ([scriptblock]::Create((irm https://csound-plugins.github.io/getcsound.ps1))) -- /SILENT
+```
+
+### Choosing what to install
+
+Use `--help` to display bootstrap options without downloading anything, and
+`--help-all` to also show information about the bundled installer.
+
+By default macOS and Windows install the latest successful `csound_builds`
+workflow artifact. Pass `--release` to install the installer published with the
+latest GitHub release instead:
+
+```bash
+curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --release
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://csound-plugins.github.io/getcsound.ps1))) --release
+```
+
+Linux always installs from a release, so `--release` has no effect there. Set
+`CSOUND7_RELEASE_TAG` to pin a specific release tag instead of `latest`.
 
 ## What the script does
 
@@ -76,9 +122,24 @@ Windows is not supported at the moment
    mirror (GitHub Actions artifacts require authentication otherwise).
 4. Extracts the `.pkg` and installs it with `sudo installer -pkg ... -target /`.
 
+With `--release`, steps 1-3 are replaced by downloading
+`csound-macos-<tag>.zip` from the latest `csound/csound` release.
+
 Because the macOS install runs under `sudo`, it requires an interactive
 terminal session.
 
+### Windows
+
+1. Detects the CPU architecture and refuses to install on ARM64.
+2. Looks up the latest successful `csound_builds` workflow run of
+   `csound/csound` on the `develop` branch.
+3. Selects the artifact matching `Csound_x64-*-windows-installer`.
+4. Downloads it through the anonymous [nightly.link](https://nightly.link)
+   mirror (GitHub Actions artifacts require authentication otherwise).
+5. Extracts the `.exe` and runs it elevated, silently, adding Csound to `PATH`.
+
+With `--release`, steps 2-4 are replaced by downloading
+`csound-windows-<tag>.zip` from the latest `csound/csound` release.
 
 ## Environment variables
 
@@ -86,20 +147,29 @@ terminal session.
 |---------------------------|--------------------------------|-----------------------------------------------|
 | `CSOUND7_TAG`             | `latest`                       | GitHub release tag to install (Linux).        |
 | `CSOUND7_ASSET`           | Depends on platform            | Name of the release asset to download (Linux).|
-| `CSOUND7_REPO`            | Depends on platform            | `owner/repo` providing the installer: `csound-plugins/csound-plugins` on Linux, `csound/csound` on macOS. |
-| `CSOUND7_WORKFLOW`        | `csound_builds.yml`            | Workflow whose artifacts are used (macOS).    |
+| `CSOUND7_REPO`            | Depends on platform            | `owner/repo` providing the installer: `csound-plugins/csound-plugins` on Linux, `csound/csound` on macOS and Windows. |
+| `CSOUND7_WORKFLOW`        | `csound_builds.yml`            | Workflow whose artifacts are used (macOS, Windows). |
 | `CSOUND7_MACOS_BRANCH`    | `develop`                      | Branch of the workflow runs to use (macOS).   |
 | `CSOUND7_MACOS_ASSET`     | `csound-7.*-macos*`            | Glob of the artifact name to install (macOS). |
 | `CSOUND7_MACOS_RUN_ID`    | *(latest successful run)*      | Pin a specific workflow run (macOS).          |
 | `CSOUND7_MACOS_ARTIFACT`  | *(first match of the glob)*    | Pin a specific artifact name (macOS).         |
+| `CSOUND7_WINDOWS_BRANCH`  | `develop`                      | Branch of the workflow runs to use (Windows). |
+| `CSOUND7_WINDOWS_ASSET`   | `Csound_x64-*-windows-installer` | Glob of the artifact name to install (Windows). |
+| `CSOUND7_WINDOWS_RUN_ID`  | *(latest successful run)*      | Pin a specific workflow run (Windows).        |
+| `CSOUND7_WINDOWS_ARTIFACT`| *(first match of the glob)*    | Pin a specific artifact name (Windows).       |
+| `CSOUND7_WINDOWS_EXE`     | `Csound7-windows_x86_64-*.exe` | Glob of the installer executable (Windows).   |
+| `CSOUND7_RELEASE_TAG`     | `latest`                       | Release tag installed with `--release` (macOS, Windows); `latest` uses the newest release. |
 | `CSOUND7_GH_TOKEN`        | *(anonymous)*                  | GitHub token used to authenticate the API queries when set (also honors `GH_TOKEN` / `GITHUB_TOKEN`). Recommended on CI, where anonymous API calls are rate-limited. |
 
 ## Options
 
+Both the shell and the PowerShell scripts accept the same options.
+
 | Option | Description |
 |--------|-------------|
 | `--help` | Show bootstrap options without downloading the installer. |
-| `--help-all` | Download and verify the installer, then show bootstrap and bundled installer help (Linux only). |
+| `--help-all` | Show bootstrap options plus information about the bundled installer (on Linux, download and verify it first, then show its help). |
+| `--release` | Install the latest GitHub release instead of the latest successful `csound_builds` workflow run (macOS and Windows; no effect on Linux). |
 | `--verbose` | Print the download URLs and other diagnostic information (checksums on Linux). |
 
 ## Requirements
@@ -115,3 +185,9 @@ terminal session.
 
 Only tools that ship with macOS are used (`curl`, `mktemp`, `ditto`,
 `installer`), plus `sudo`. An interactive terminal session is required.
+
+### Windows
+
+- Windows PowerShell 5.1 or later (works with PowerShell 7 as well).
+- Administrator rights, since the installer writes to `%ProgramFiles%` and
+  machine-wide environment variables. A UAC prompt is shown when needed.

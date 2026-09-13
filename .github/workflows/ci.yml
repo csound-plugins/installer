@@ -33,3 +33,22 @@ jobs:
         with:
           name: macos-render
           path: ${{ runner.temp }}/csound-render
+
+  windows-smoke:
+    name: Windows install & render smoke test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Csound and render a .csd
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RENDER_ARTIFACT_DIR: ${{ runner.temp }}/csound-render
+        shell: pwsh
+        run: ./tests/windows_smoke.ps1
+      - name: Upload rendered output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-render
+          path: ${{ runner.temp }}/csound-render
