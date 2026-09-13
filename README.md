@@ -100,7 +100,7 @@ curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --release
 & ([scriptblock]::Create((irm https://csound-plugins.github.io/getcsound.ps1))) --release
 ```
 
-Linux always installs from a release, so `--release` has no effect there. Set
+Linux always installs from the latest build, so `--release` has no effect there. Set
 `CSOUND7_RELEASE_TAG` to pin a specific release tag instead of `latest`.
 
 ## What the script does
