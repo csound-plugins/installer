@@ -166,7 +166,7 @@ With `--release`, steps 2-4 are replaced by downloading
 | `CSOUND7_WINDOWS_ARTIFACT`| *(first match of the glob)*    | Pin a specific artifact name (Windows).       |
 | `CSOUND7_WINDOWS_EXE`     | `Csound7-windows_x86_64-*.exe` | Glob of the installer executable (Windows).   |
 | `CSOUND7_RELEASE_TAG`     | `latest`                       | Release tag installed with `--release` (macOS, Windows); `latest` uses the newest release. |
-| `CSOUND7_GH_TOKEN`        | *(anonymous)*                  | GitHub token used to authenticate the API queries when set (also honors `GH_TOKEN` / `GITHUB_TOKEN`). Recommended on CI, where anonymous API calls are rate-limited. |
+| `CSOUND7_GH_TOKEN`        | *(anonymous)*                  | GitHub token used to authenticate the API queries when set (also honors `GH_TOKEN` / `GITHUB_TOKEN`). Recommended on CI, where anonymous API calls are rate-limited. When none of these is set and the GitHub CLI is installed, `gh auth token` is used as a fallback. |
 
 ## Options
 

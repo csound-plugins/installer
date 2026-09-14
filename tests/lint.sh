@@ -86,6 +86,90 @@ else
     echo "   skipped: setsid not available to detach from the terminal"
 fi
 
+# write_curl -> prints a directory holding a fake curl that records its
+# arguments (one line per invocation) to the file named by the RECORD env var
+# and then fails, so the script stops at the first API query.
+write_curl() {
+    local dir="$WORK/curl-$RANDOM"
+    mkdir -p "$dir"
+    cat > "$dir/curl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$RECORD"
+exit 1
+EOF
+    chmod +x "$dir/curl"
+    printf '%s\n' "$dir"
+}
+
+# write_gh -> prints a directory holding a fake gh that answers
+# `gh auth token` with GH_FAKE_TOKEN (empty simulates an unauthenticated gh).
+write_gh() {
+    local dir="$WORK/gh-$RANDOM"
+    mkdir -p "$dir"
+    cat > "$dir/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "auth" && "${2:-}" == "token" && -n "${GH_FAKE_TOKEN:-}" ]]; then
+    printf '%s\n' "$GH_FAKE_TOKEN"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$dir/gh"
+    printf '%s\n' "$dir"
+}
+
+# run_macos_api_probe RECORD [ENVNAME ENVVAL] -> runs the macOS path with a
+# fake sudo/curl/gh. All API queries fail, so only the authentication attempt
+# is observable (recorded by the fake curl). ENVNAME is a token variable to
+# expose to the script under test.
+run_macos_api_probe() {
+    local record=$1
+    local envname=${2:-} envval=${3:-}
+    local dir yessudo curldir ghdir
+    local -a extra=()
+    dir=$(write_uname Darwin)
+    yessudo="$WORK/yessudo-$RANDOM"
+    mkdir -p "$yessudo"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$yessudo/sudo"
+    chmod +x "$yessudo/sudo"
+    curldir=$(write_curl)
+    ghdir=$(write_gh)
+    [[ -n "$envname" ]] && extra+=("$envname=$envval")
+    env RECORD="$record" "${extra[@]}" PATH="$yessudo:$ghdir:$curldir:$dir:$PATH" \
+        setsid bash getcsound.sh </dev/null >/dev/null 2>&1 || true
+}
+
+echo "== macOS API queries use GH_TOKEN from the environment =="
+if command -v setsid >/dev/null 2>&1; then
+    record="$WORK/record-envtoken-$RANDOM"
+    run_macos_api_probe "$record" GH_TOKEN envtok
+    grep -q 'Authorization: Bearer envtok' "$record" \
+        || fail "API query did not authenticate with GH_TOKEN"
+else
+    echo "   skipped: setsid not available to detach from the terminal"
+fi
+
+echo "== macOS API queries fall back to 'gh auth token' =="
+if command -v setsid >/dev/null 2>&1; then
+    record="$WORK/record-ghtoken-$RANDOM"
+    run_macos_api_probe "$record" GH_FAKE_TOKEN ghtok
+    grep -q 'Authorization: Bearer ghtok' "$record" \
+        || fail "API query did not use the 'gh auth token' fallback"
+else
+    echo "   skipped: setsid not available to detach from the terminal"
+fi
+
+echo "== macOS API queries stay anonymous without a token =="
+if command -v setsid >/dev/null 2>&1; then
+    record="$WORK/record-anon-$RANDOM"
+    run_macos_api_probe "$record"
+    if grep -q 'Authorization' "$record"; then
+        fail "anonymous API query must not send an Authorization header"
+    fi
+else
+    echo "   skipped: setsid not available to detach from the terminal"
+fi
+
 echo "== unsupported OS is rejected =="
 dir=$(write_uname Plan9)
 out=$(PATH="$dir:$PATH" bash getcsound.sh 2>&1)
