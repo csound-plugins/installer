@@ -17,21 +17,26 @@ jobs:
         run: bash tests/lint.sh
 
   macos-smoke:
-    name: macOS install & render smoke test
+    name: macOS install & render smoke test (pty=${{ matrix.pty }})
     runs-on: macos-latest
     timeout-minutes: 20
+    strategy:
+      matrix:
+        pty: ["0", "1"]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - name: Install Csound and render a .csd
         env:
           GH_TOKEN: ${{ github.token }}
           RENDER_ARTIFACT_DIR: ${{ runner.temp }}/csound-render
+          SMOKE_PTY: ${{ matrix.pty }}
         run: bash tests/macos_smoke.sh
       - name: Upload rendered output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: macos-render
+          name: macos-render-pty${{ matrix.pty }}
           path: ${{ runner.temp }}/csound-render
 
   windows-smoke:

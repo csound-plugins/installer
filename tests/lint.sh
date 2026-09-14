@@ -49,13 +49,39 @@ rc=$?
 grep -q 'Usage:' <<<"$out" || fail "macOS --help-all does not print usage"
 grep -q 'no bundled installer' <<<"$out" || fail "macOS --help-all does not mention the .pkg"
 
-echo "== macOS path refuses to run without a terminal =="
+echo "== macOS path refuses to run without a terminal and without passwordless sudo =="
 if command -v setsid >/dev/null 2>&1; then
     dir=$(write_uname Darwin)
-    out=$(PATH="$dir:$PATH" setsid bash getcsound.sh </dev/null 2>&1)
+    nosudo="$WORK/nosudo-$RANDOM"
+    mkdir -p "$nosudo"
+    printf '#!/usr/bin/env bash\nexit 1\n' > "$nosudo/sudo"
+    chmod +x "$nosudo/sudo"
+    out=$(PATH="$nosudo:$dir:$PATH" setsid bash getcsound.sh </dev/null 2>&1)
     rc=$?
     [[ $rc -ne 0 ]] || fail "macOS path should refuse to run without a terminal"
     grep -qi 'must be run from a terminal' <<<"$out" || fail "macOS refusal message not printed"
+else
+    echo "   skipped: setsid not available to detach from the terminal"
+fi
+
+echo "== macOS path proceeds without a terminal when sudo is passwordless =="
+if command -v setsid >/dev/null 2>&1; then
+    dir=$(write_uname Darwin)
+    yessudo="$WORK/yessudo-$RANDOM"
+    mkdir -p "$yessudo"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$yessudo/sudo"
+    chmod +x "$yessudo/sudo"
+    # A failing curl stops the script at the API query, before downloading or
+    # installing anything, but after the terminal/sudo check.
+    nocurl="$WORK/nocurl-$RANDOM"
+    mkdir -p "$nocurl"
+    printf '#!/usr/bin/env bash\nexit 1\n' > "$nocurl/curl"
+    chmod +x "$nocurl/curl"
+    out=$(PATH="$yessudo:$nocurl:$dir:$PATH" setsid bash getcsound.sh </dev/null 2>&1)
+    if grep -qi 'must be run from a terminal' <<<"$out"; then
+        fail "macOS path should not refuse when sudo is passwordless"
+    fi
+    grep -q 'Looking for the latest successful' <<<"$out" || fail "macOS path did not proceed past the terminal check"
 else
     echo "   skipped: setsid not available to detach from the terminal"
 fi

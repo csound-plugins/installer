@@ -7,8 +7,10 @@
 # passwordless sudo). It then verifies the installed csound binary works by
 # rendering a small .csd to disk.
 #
-# The script requires an interactive terminal, so it is launched under `script`
-# (which provides a pseudo-terminal).
+# GitHub-hosted macOS runners allow passwordless sudo, so by default the script
+# is run without a terminal, exercising the non-interactive install path. Set
+# SMOKE_PTY=1 to run it under `script` (which provides a pseudo-terminal) and
+# exercise the interactive path instead.
 #
 # This depends on the csound/csound "develop" branch having a recent
 # successful build with a macOS artifact.
@@ -45,7 +47,11 @@ fail() {
 
 # Use /bin/bash (the macOS system bash, v3.2) to also cover version
 # compatibility of getcsound.sh.
-script "$LOG" /bin/bash ./getcsound.sh
+if [[ "${SMOKE_PTY:-0}" == "1" ]]; then
+    script "$LOG" /bin/bash ./getcsound.sh
+else
+    /bin/bash ./getcsound.sh > "$LOG" 2>&1
+fi
 
 # The transcript may use CRLF line endings (pseudo-terminal); normalize.
 if [[ -f "$LOG" ]]; then

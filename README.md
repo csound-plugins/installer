@@ -28,11 +28,16 @@ curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash
 
 ### macOS
 
-The `.pkg` is installed with `sudo`, so you must run this from a terminal:
+The `.pkg` is installed with `sudo`, so run this from a terminal to let `sudo`
+prompt for your password:
 
 ```bash
 curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash
 ```
+
+When `sudo` is configured to run without a password (passwordless `sudo`, as on
+GitHub-hosted runners), no terminal is needed and the installer runs
+non-interactively, which makes it usable from a CI job.
 
 The installer detects the os and architecture and downloads the corresponding distribution
 and prints the exact archive URL before downloading it.
@@ -125,8 +130,10 @@ Linux always installs from the latest build, so `--release` has no effect there.
 With `--release`, steps 1-3 are replaced by downloading
 `csound-macos-<tag>.zip` from the latest `csound/csound` release.
 
-Because the macOS install runs under `sudo`, it requires an interactive
-terminal session.
+Because the macOS install runs under `sudo`, you normally need an interactive
+terminal session so that `sudo` can prompt for the password. If `sudo` is
+configured to run without a password (passwordless `sudo`, as on GitHub-hosted
+runners), no terminal is required and the installer runs non-interactively.
 
 ### Windows
 
@@ -184,7 +191,8 @@ Both the shell and the PowerShell scripts accept the same options.
 ### macOS
 
 Only tools that ship with macOS are used (`curl`, `mktemp`, `ditto`,
-`installer`), plus `sudo`. An interactive terminal session is required.
+`installer`), plus `sudo`. An interactive terminal session is required so that
+`sudo` can prompt for the password, unless passwordless `sudo` is configured.
 
 ### Windows
 
