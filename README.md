@@ -11,9 +11,9 @@ current platform and installs it:
   `csound_builds` workflow of the [csound/csound](https://github.com/csound/csound)
   repository (branch `develop`, which corresponds to Csound 7) and installs it
   with the system `installer`.
-- On **Windows** (x86_64 only) it downloads the official `.exe` installer built
-  by the same `csound_builds` workflow and runs it. Windows on ARM64 is not
-  supported yet.
+- On **Windows 11 or later** (x86_64 only) it downloads the official `.exe`
+  installer built by the same `csound_builds` workflow and runs it, using the
+  `curl.exe` bundled with Windows. Windows on ARM64 is not supported yet.
 
 The shell script is uploaded to the csound-plugins site as
 `csound-plugins.github.io/getcsound.sh`; the PowerShell script as
@@ -58,7 +58,9 @@ curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --help
 
 ### Windows
 
-Windows on ARM64 is not supported yet; the installer exits with an error there.
+Windows 11 or later is required (the installer uses the `curl.exe` bundled with
+Windows); Windows on ARM64 is not supported yet and the installer exits with an
+error there.
 
 The `.exe` is a machine-wide Inno Setup installer, so it needs Administrator
 rights. Run this from a PowerShell session (a UAC prompt will appear unless the
@@ -217,6 +219,8 @@ Only tools that ship with macOS are used (`curl`, `mktemp`, `ditto`,
 
 ### Windows
 
+- Windows 11 or later (x86_64).
 - Windows PowerShell 5.1 or later (works with PowerShell 7 as well).
+- `curl.exe`, which is bundled with Windows 11 and later.
 - Administrator rights, since the installer writes to `%ProgramFiles%` and
   machine-wide environment variables. A UAC prompt is shown when needed.
