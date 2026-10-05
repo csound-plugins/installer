@@ -47,8 +47,13 @@ $ScriptPath = (Resolve-Path -LiteralPath './getcsound.ps1').Path
 [System.Management.Automation.Language.Parser]::ParseFile($ScriptPath, [ref]$tokens, [ref]$parseErrors) | Out-Null
 if ($parseErrors.Count -gt 0) { Fail 'getcsound.ps1 has syntax errors' }
 
+# --- Help lists the expected options -------------------------------
+$help = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath --help 2>&1
+if ($help -notmatch '--verbose') { Fail 'getcsound.ps1 --help does not mention --verbose' }
+if ($help -notmatch '--quiet') { Fail 'getcsound.ps1 --help does not mention --quiet' }
+
 # --- Run the installer (under Windows PowerShell 5.1) --------------
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath > $Log 2>&1
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath --no-risset > $Log 2>&1
 $rc = $LASTEXITCODE
 Save-Artifact $Log 'install.log'
 if ($rc -ne 0) { Fail "getcsound.ps1 exited with $rc" }

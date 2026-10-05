@@ -5,7 +5,8 @@ current platform and installs it:
 
 - On **Linux** it downloads the portable release from the
   [csound-plugins/csound-plugins](https://github.com/csound-plugins/csound-plugins)
-  GitHub repository, verifies its SHA-256 checksum, and runs the bundled installer.
+  GitHub repository, verifies its SHA-256 checksum, and installs it directly
+  (system-wide or user-local, optionally with risset).
 - On **macOS** it downloads the official `.pkg` installer built by the
   `csound_builds` workflow of the [csound/csound](https://github.com/csound/csound)
   repository (branch `develop`, which corresponds to Csound 7) and installs it
@@ -48,19 +49,11 @@ To show the checksum-file URL and the expected and calculated SHA-256 checksums:
 curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --verbose
 ```
 
-`--verbose` belongs to the bootstrap script. To pass a `--verbose` flag to the
-bundled installer instead, separate it with `--`:
+Use `--help` to display the available options, including the Linux
+installation options, without downloading anything:
 
 ```bash
-bash ./install-csound7-linux.sh -- --verbose
-```
-
-Use `--help` to display bootstrap options without downloading anything. Use
-`--help-all` to download and verify the release, then display both bootstrap
-options and the bundled installer's supported options and parameters:
-
-```bash
-curl -fsSL https://csound-plugins.github.io/installer/install.sh | bash -s -- --help-all
+curl -fsSL https://csound-plugins.github.io/getcsound.sh | bash -s -- --help
 ```
 
 ### Windows
@@ -90,8 +83,11 @@ Setup installer instead, separate them with `--`:
 
 ### Choosing what to install
 
-Use `--help` to display bootstrap options without downloading anything, and
-`--help-all` to also show information about the bundled installer.
+Use `--help` to display the available options without downloading anything.
+`--no-risset` skips the risset package manager: by
+default you are asked interactively, or it is installed non-interactively with
+`-y`. `--quiet` prints only essential information; on Linux, `--user` /
+`--system` choose the installation mode.
 
 By default macOS and Windows install the latest successful `csound_builds`
 workflow artifact. Pass `--release` to install the installer published with the
@@ -116,7 +112,10 @@ Linux always installs from the latest build, so `--release` has no effect there.
 2. Downloads the release asset.
 3. Downloads the matching SHA-256 checksum file.
 4. Verifies the archive's checksum before extracting it.
-5. Locates the bundled `install.sh` inside the archive and runs it.
+5. Installs the extracted distribution, either system-wide (`/usr/local`,
+   requires `sudo`) or user-local (`~/.local`), and updates the shell `PATH`
+   for user-local installs.
+6. Optionally installs risset.
 
 ### macOS
 
@@ -126,6 +125,7 @@ Linux always installs from the latest build, so `--release` has no effect there.
 3. Downloads it through the anonymous [nightly.link](https://nightly.link)
    mirror (GitHub Actions artifacts require authentication otherwise).
 4. Extracts the `.pkg` and installs it with `sudo installer -pkg ... -target /`.
+5. Optionally installs risset.
 
 With `--release`, steps 1-3 are replaced by downloading
 `csound-macos-<tag>.zip` from the latest `csound/csound` release.
@@ -144,6 +144,7 @@ runners), no terminal is required and the installer runs non-interactively.
 4. Downloads it through the anonymous [nightly.link](https://nightly.link)
    mirror (GitHub Actions artifacts require authentication otherwise).
 5. Extracts the `.exe` and runs it elevated, silently, adding Csound to `PATH`.
+6. Optionally installs risset.
 
 With `--release`, steps 2-4 are replaced by downloading
 `csound-windows-<tag>.zip` from the latest `csound/csound` release.
@@ -170,14 +171,30 @@ With `--release`, steps 2-4 are replaced by downloading
 
 ## Options
 
-Both the shell and the PowerShell scripts accept the same options.
+The shell and the PowerShell scripts accept the same bootstrap options:
 
 | Option | Description |
 |--------|-------------|
-| `--help` | Show bootstrap options without downloading the installer. |
-| `--help-all` | Show bootstrap options plus information about the bundled installer (on Linux, download and verify it first, then show its help). |
+| `--help` | Show the available options without downloading anything. |
 | `--release` | Install the latest GitHub release instead of the latest successful `csound_builds` workflow run (macOS and Windows; no effect on Linux). |
 | `--verbose` | Print the download URLs and other diagnostic information (checksums on Linux). |
+
+Both scripts also accept these installation options, which behave identically
+on Linux, macOS and Windows:
+
+| Option | Description |
+|--------|-------------|
+| `--no-risset` | Do not install risset and do not ask about it. |
+| `-y` | Non-interactive: do not prompt; install Csound and risset. On Linux this also selects a system-wide installation. Pass `--no-risset` to skip risset. |
+| `--quiet` | Only print essential information (warnings, errors, and a final completion message). |
+
+The shell script additionally accepts the following Linux installation options
+(they are ignored, with a warning, on macOS):
+
+| Option | Description |
+|--------|-------------|
+| `--user` | Install for the current user only (`~/.local`). |
+| `--system` | Install system-wide (`/usr/local`, requires `sudo`). |
 
 ## Requirements
 
@@ -187,6 +204,10 @@ Both the shell and the PowerShell scripts accept the same options.
 - `unzip`
 - `mktemp`
 - `sha256sum` or `shasum`
+- `patchelf` and `sudo` (or root) for a system-wide installation
+
+An interactive terminal session is required for the interactive prompts. Pass
+`-y` to run non-interactively (no terminal needed).
 
 ### macOS
 

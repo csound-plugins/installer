@@ -48,9 +48,9 @@ fail() {
 # Use /bin/bash (the macOS system bash, v3.2) to also cover version
 # compatibility of getcsound.sh.
 if [[ "${SMOKE_PTY:-0}" == "1" ]]; then
-    script "$LOG" /bin/bash ./getcsound.sh
+    script "$LOG" /bin/bash ./getcsound.sh --no-risset
 else
-    /bin/bash ./getcsound.sh > "$LOG" 2>&1
+    /bin/bash ./getcsound.sh --no-risset > "$LOG" 2>&1
 fi
 
 # The transcript may use CRLF line endings (pseudo-terminal); normalize.
@@ -61,7 +61,7 @@ save_artifact "$NORM" install.log
 
 grep -q 'Using workflow run:' "$NORM" || fail "no workflow run was resolved"
 grep -qE 'Using artifact: csound-7' "$NORM" || fail "no matching macOS artifact was resolved"
-grep -qE '^Package: .*\.pkg' "$NORM" || fail "no .pkg was located"
+grep -qE 'Package: .*\.pkg' "$NORM" || fail "no .pkg was located"
 grep -q 'Csound installed successfully.' "$NORM" || fail "install did not complete"
 
 CSOUND_BIN="/Applications/Csound/csound"

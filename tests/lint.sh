@@ -41,13 +41,18 @@ rc=$?
 grep -q 'Usage:' <<<"$out" || fail "--help does not print usage"
 grep -q -- '--release' <<<"$out" || fail "--help does not mention --release"
 
-echo "== macOS --help-all exits without downloading =="
-dir=$(write_uname Darwin)
-out=$(PATH="$dir:$PATH" bash getcsound.sh --help-all 2>&1)
+echo "== --help documents the Linux installation options =="
+out=$(bash getcsound.sh --help 2>&1)
 rc=$?
-[[ $rc -eq 0 ]] || fail "macOS --help-all exited with $rc"
-grep -q 'Usage:' <<<"$out" || fail "macOS --help-all does not print usage"
-grep -q 'no bundled installer' <<<"$out" || fail "macOS --help-all does not mention the .pkg"
+[[ $rc -eq 0 ]] || fail "--help exited with $rc"
+grep -q -- '--user' <<<"$out" || fail "--help does not mention --user"
+grep -q -- '--quiet' <<<"$out" || fail "--help does not mention --quiet"
+
+echo "== unknown option is rejected =="
+out=$(bash getcsound.sh --bogus 2>&1)
+rc=$?
+[[ $rc -ne 0 ]] || fail "unknown option should exit non-zero"
+grep -q 'Unknown option' <<<"$out" || fail "unknown option message not printed"
 
 echo "== macOS path refuses to run without a terminal and without passwordless sudo =="
 if command -v setsid >/dev/null 2>&1; then
@@ -176,5 +181,77 @@ out=$(PATH="$dir:$PATH" bash getcsound.sh 2>&1)
 rc=$?
 [[ $rc -ne 0 ]] || fail "unsupported OS should exit non-zero"
 grep -q 'Unsupported operating system' <<<"$out" || fail "unsupported OS message not printed"
+
+# run_linux_install_smoke -> builds a fake portable archive and stubs curl and
+# uname, then runs a user-local, non-interactive install into a temporary HOME
+# and checks the result. No network access and no system files are touched.
+run_linux_install_smoke() {
+    local root="$WORK/linux-$RANDOM"
+    local src="$root/src" fake="$root/fake" home="$root/home" zipdir="$root/zip"
+    mkdir -p "$src/plugins" "$fake" "$zipdir"
+
+    printf '#!/bin/sh\necho csound\n' > "$src/csound"
+    chmod +x "$src/csound"
+    printf 'x' > "$src/libcsound64.so.7.0"
+    printf 'x' > "$src/plugins/portable.so"
+    ( cd "$src" && zip -qr "$zipdir/asset.zip" . )
+    sha256sum "$zipdir/asset.zip" | awk '{print $1"  csound7-linux-x86_64.zip"}' > "$zipdir/asset.zip.sha256"
+
+    cat > "$fake/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    -s) echo Linux ;;
+    -m) echo x86_64 ;;
+    *)  echo Linux ;;
+esac
+EOF
+    # Fake curl: serves the pre-built archive/checksum regardless of URL.
+    cat > "$fake/curl" <<'EOF'
+#!/usr/bin/env bash
+out=""; url=""
+while (($#)); do
+    case "$1" in
+        -o) out="$2"; shift 2 ;;
+        -*) shift ;;
+        *)  url="$1"; shift ;;
+    esac
+done
+case "$url" in
+    *.sha256) cp "$FAKE_SHA" "$out" ;;
+    *.zip)    cp "$FAKE_ZIP" "$out" ;;
+    *) echo "unexpected curl URL: $url" >&2; exit 1 ;;
+esac
+EOF
+    chmod +x "$fake/uname" "$fake/curl"
+
+    if ! env -i HOME="$home" PATH="$fake:/usr/bin:/bin" \
+        FAKE_ZIP="$zipdir/asset.zip" FAKE_SHA="$zipdir/asset.zip.sha256" \
+        SHELL=/bin/bash TERM=dumb \
+        bash getcsound.sh --user -y --no-risset > "$root/out" 2>&1; then
+        cat "$root/out" >&2
+        fail "Linux install smoke test failed"
+    fi
+
+    [[ -x "$home/.local/csound/csound" ]] || fail "csound was not installed"
+    [[ -f "$home/.local/csound/libcsound64.so.7.0" ]] || fail "libcsound64.so.7.0 was not installed"
+    [[ -f "$home/.local/lib/csound/7.0/plugins64/portable.so" ]] || fail "plugins were not installed"
+    grep -q '# Added by Csound 7 installer' "$home/.bashrc" || fail "PATH was not added to the shell config"
+
+    # The quiet mode must suppress the install chatter but keep one completion line.
+    if ! env -i HOME="$root/home-quiet" PATH="$fake:/usr/bin:/bin" \
+        FAKE_ZIP="$zipdir/asset.zip" FAKE_SHA="$zipdir/asset.zip.sha256" \
+        SHELL=/bin/bash TERM=dumb \
+        bash getcsound.sh --user -y --no-risset --quiet > "$root/quiet.out" 2>&1; then
+        cat "$root/quiet.out" >&2
+        fail "Linux quiet install smoke test failed"
+    fi
+    if grep -q 'Portable Installer' "$root/quiet.out"; then
+        fail "quiet mode still prints the installer banner"
+    fi
+    grep -q 'Csound 7 installed to' "$root/quiet.out" || fail "quiet mode did not print the completion line"
+}
+
+echo "== Linux install (user-local, non-interactive) =="
+run_linux_install_smoke
 
 echo "lint tests OK"
